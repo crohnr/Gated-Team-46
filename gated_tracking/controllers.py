@@ -1,66 +1,54 @@
-# controllers.py
-from fastapi import FastAPI, HTTPException
+# gated_tracking/controllers.py
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
 
-from models import Carrier, TrackingItem
-from repositories import InMemoryTrackingItemRepository
-from services import TrackingService
+from .models import Carrier
+from .repositories import InMemoryTrackingItemRepository
+from .services import TrackingService
 
-app = FastAPI(title="Gated Item Tracking API")
+app = FastAPI(title="Gated Tracking API")
+
+# 👇 NEW: CORS setup for Flutter Web (dev)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # for development; you can restrict later
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 repo = InMemoryTrackingItemRepository()
-tracking_service = TrackingService(repo=repo)
+service = TrackingService(repo)
 
-class TrackingItemCreateRequest(BaseModel):
+
+class CreateTrackingRequest(BaseModel):
     user_id: int
     tracking_number: str
     carrier: Carrier
     label: str
 
-class TrackingItemResponse(BaseModel):
-    id: int
-    user_id: int
-    tracking_number: str
-    carrier: Carrier
-    label: str
-    status: str
-    estimated_delivery: str | None
 
-    @staticmethod
-    def from_model(item: TrackingItem) -> "TrackingItemResponse":
-        return TrackingItemResponse(
-            id=item.id,
-            user_id=item.user_id,
-            tracking_number=item.tracking_number,
-            carrier=item.carrier,
-            label=item.label,
-            status=item.status.value,
-            estimated_delivery=(
-                item.estimated_delivery.isoformat()
-                if item.estimated_delivery else None
-            ),
-        )
-
-@app.post("/tracking-items", response_model=TrackingItemResponse)
-def create_tracking_item(request: TrackingItemCreateRequest):
-    item = tracking_service.add_tracking_item(
-        user_id=request.user_id,
-        tracking_number=request.tracking_number,
-        carrier=request.carrier,
-        label=request.label,
+@app.post("/tracking")
+def create_tracking(req: CreateTrackingRequest):
+    item = service.add_tracking_item(
+        user_id=req.user_id,
+        tracking_number=req.tracking_number,
+        carrier=req.carrier,
+        label=req.label,
     )
-    return TrackingItemResponse.from_model(item)
+    return item
 
-@app.get("/users/{user_id}/tracking-items", response_model=List[TrackingItemResponse])
-def list_user_items(user_id: int):
-    items = tracking_service.get_user_items(user_id)
-    return [TrackingItemResponse.from_model(i) for i in items]
 
-@app.post("/tracking-items/{item_id}/sync", response_model=TrackingItemResponse)
-def sync_tracking_item(item_id: int):
+@app.get("/tracking")
+def list_tracking(user_id: int = Query(...)):
+    return service.get_user_tracking_items(user_id)
+
+
+@app.post("/tracking/{item_id}/sync")
+def sync_tracking(item_id: int):
     try:
-        item = tracking_service.sync_item_with_carrier(item_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Tracking item not found")
-    return TrackingItemResponse.from_model(item)
+        return service.sync_item_with_carrier(item_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

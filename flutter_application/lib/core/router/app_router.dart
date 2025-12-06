@@ -2,30 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/wardrobe/presentation/wardrobe_page.dart';
-import '../../features/brands/presentation/brands_page.dart';
-import '../../features/orders/presentation/orders_page.dart';
+import '../../features/tracking/screens/tracking_list_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/wardrobe',
+    initialLocation: '/tracking', // your existing start page
     routes: [
+      // Added tracking route
       GoRoute(
-        path: '/wardrobe',
-        builder: (context, state) => const WardrobePage(),
-      ),
-      GoRoute(
-        path: '/brands',
-        builder: (context, state) => const BrandsPage(),
-      ),
-      GoRoute(
-        path: '/orders',
-        builder: (context, state) => const OrdersPage(),
+        path: '/tracking',
+        builder: (context, state) => const TrackingListScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(title: const Text('Not found')),
-      body: Center(child: Text(state.error?.toString() ?? 'Unknown error')),
+      body: Center(
+        child: Text(state.error?.toString() ?? 'Unknown error'),
+      ),
     ),
   );
 });

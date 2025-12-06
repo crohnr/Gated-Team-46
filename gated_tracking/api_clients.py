@@ -1,69 +1,66 @@
-# api_clients.py
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional
-from models import TrackingStatus, Carrier
-from config import settings
+import random
 
-@dataclass
-class CarrierTrackingResponse:
-    status: TrackingStatus
-    estimated_delivery: Optional[datetime]
+from .models import Carrier, TrackingStatus, TrackingItem
+from .config import settings
+
 
 class CarrierApiClient(ABC):
-    """Strategy base class for carrier integrations."""
 
     @abstractmethod
-    def fetch_tracking(self, tracking_number: str) -> CarrierTrackingResponse:
-        pass
+    def fetch_tracking_update(self, tracking_number: str) -> dict:
+        """Return a dict containing status + optional estimated_delivery."""
 
 
 class UspsApiClient(CarrierApiClient):
-    def __init__(self, api_key: str) -> None:
-        self.api_key = api_key
 
-    def fetch_tracking(self, tracking_number: str) -> CarrierTrackingResponse:
-        # mocked
-        return CarrierTrackingResponse(
-            status=TrackingStatus.IN_TRANSIT,
-            estimated_delivery=datetime.utcnow() + timedelta(days=2),
-        )
+    def fetch_tracking_update(self, tracking_number: str) -> dict:
+        statuses = [
+            TrackingStatus.IN_TRANSIT,
+            TrackingStatus.OUT_FOR_DELIVERY,
+            TrackingStatus.DELIVERED
+        ]
+        return {
+            "status": random.choice(statuses),
+            "estimated_delivery": datetime.utcnow() + timedelta(days=random.randint(1, 4)),
+        }
 
 
 class UpsApiClient(CarrierApiClient):
-    def __init__(self, api_key: str) -> None:
-        self.api_key = api_key
 
-    def fetch_tracking(self, tracking_number: str) -> CarrierTrackingResponse:
-        return CarrierTrackingResponse(
-            status=TrackingStatus.OUT_FOR_DELIVERY,
-            estimated_delivery=datetime.utcnow() + timedelta(days=1),
-        )
+    def fetch_tracking_update(self, tracking_number: str) -> dict:
+        statuses = [
+            TrackingStatus.IN_TRANSIT,
+            TrackingStatus.DELIVERED
+        ]
+        return {
+            "status": random.choice(statuses),
+            "estimated_delivery": datetime.utcnow() + timedelta(days=random.randint(2, 5)),
+        }
 
 
 class FedexApiClient(CarrierApiClient):
-    def __init__(self, api_key: str) -> None:
-        self.api_key = api_key
 
-    def fetch_tracking(self, tracking_number: str) -> CarrierTrackingResponse:
-        return CarrierTrackingResponse(
-            status=TrackingStatus.DELIVERED,
-            estimated_delivery=datetime.utcnow(),
-        )
+    def fetch_tracking_update(self, tracking_number: str) -> dict:
+        statuses = [
+            TrackingStatus.IN_TRANSIT,
+            TrackingStatus.OUT_FOR_DELIVERY
+        ]
+        return {
+            "status": random.choice(statuses),
+            "estimated_delivery": datetime.utcnow() + timedelta(days=random.randint(1, 3)),
+        }
 
 
 class CarrierClientFactory:
-    """Factory to create carrier API clients."""
 
     @staticmethod
     def create(carrier: Carrier) -> CarrierApiClient:
         if carrier == Carrier.USPS:
-            return UspsApiClient(settings.usps_api_key)
+            return UspsApiClient()
         if carrier == Carrier.UPS:
-            return UpsApiClient(settings.ups_api_key)
+            return UpsApiClient()
         if carrier == Carrier.FEDEX:
-            return FedexApiClient(settings.fedex_api_key)
-
-        # fallback
-        return UspsApiClient(settings.usps_api_key)
+            return FedexApiClient()
+        raise ValueError(f"Unsupported carrier: {carrier}")

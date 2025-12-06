@@ -1,5 +1,5 @@
 from .models import Carrier, TrackingStatus, TrackingItem, User
-from .repositories import InMemoryTrackingItemRepository, TrackingItemRepository
+from .repositories import InMemoryTrackingItemRepository
 from .services import TrackingService
 from .api_clients import CarrierClientFactory
 from .config import settings
@@ -7,8 +7,8 @@ from .config import settings
 
 def build_tracking_service() -> TrackingService:
     """
-    Build a TrackingService with an in-memory repository.
-    Useful for tests, demos, or CLI tools.
+    Creates a TrackingService with in-memory storage and real carrier client factory.
+    Useful for tests and demos.
     """
     repo = InMemoryTrackingItemRepository()
     return TrackingService(repo=repo)
